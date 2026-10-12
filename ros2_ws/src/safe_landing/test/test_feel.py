@@ -107,3 +107,18 @@ def test_slope_wins_over_early_bumps():
             break
     assert res.unsafe and res.reason.startswith("slope"), res.reason
     assert res.uphill[0] > 0.3 and abs(res.uphill[1]) < 0.1
+
+
+def test_bush_just_outside_landing_circle_is_ok():
+    # The camera only promises 1 m of open ground around the spot. A bush
+    # whose edge is just beyond that is not under the drone; the tilted beam
+    # still hits it high up, but that must not abort the landing.
+    world = {"hill": None, "objects": [{"kind": "bush", "x": 1.1 + 0.9, "y": 0.0, "r": 0.9}]}
+    res = fly_spiral(world, (0.0, 0.0))
+    assert res.safe, res.reason
+
+
+def test_bush_reaching_under_the_drone_is_rejected():
+    world = {"hill": None, "objects": [{"kind": "bush", "x": 0.5 + 0.9, "y": 0.0, "r": 0.9}]}
+    res = fly_spiral(world, (0.0, 0.0))
+    assert res.unsafe and res.reason.startswith("bump"), res.reason

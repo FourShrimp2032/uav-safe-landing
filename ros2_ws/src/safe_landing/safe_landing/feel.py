@@ -13,6 +13,10 @@ z = a*x + b*y + c:
 
 The fit is repeated without the worst points, so one big rock doesn't tilt
 the plane and hide itself.
+
+Bumps only count inside `bump_radius_m`, the landing circle the camera
+promised to be clear. The ring beyond it helps the slope fit, but a bush or
+rock out there is not under the drone and must not abort the landing.
 """
 from __future__ import annotations
 
@@ -25,6 +29,7 @@ import numpy as np
 @dataclass
 class FeelParams:
     check_radius_m: float = 1.3
+    bump_radius_m: float = 1.0       # = the landing circle radius (look.required_radius_m)
     min_points: int = 80
     sectors: int = 8                 # coverage is counted in angular sectors
     min_sectors: int = 7
@@ -100,7 +105,8 @@ class GroundFeel:
 
         coef, res = fit_plane(pts, p.bump_threshold_m)
         slope = math.degrees(math.atan(math.hypot(coef[0], coef[1])))
-        bumps = int((np.abs(res) > p.bump_threshold_m).sum())
+        inside = np.hypot(dx, dy) <= p.bump_radius_m
+        bumps = int((inside & (np.abs(res) > p.bump_threshold_m)).sum())
         ground_z = float(coef[0] * self.tx + coef[1] * self.ty + coef[2])
         complete = n >= p.min_points and sectors >= p.min_sectors
 
@@ -116,5 +122,6 @@ class GroundFeel:
             unsafe, reason = True, f"bump: {bumps} points off the ground by >{p.bump_threshold_m:.2f} m"
         elif not complete:
             reason = f"collecting ({n} pts, {sectors}/{p.sectors} sectors)"
-        return FeelResult(n, sectors, slope, bumps, float(np.abs(res).max()), ground_z,
+        max_res = float(np.abs(res[inside]).max()) if inside.any() else 0.0
+        return FeelResult(n, sectors, slope, bumps, max_res, ground_z,
                           (float(coef[0]), float(coef[1])), complete, complete and not unsafe, unsafe, reason)

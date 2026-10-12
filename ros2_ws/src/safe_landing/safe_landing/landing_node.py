@@ -112,6 +112,7 @@ class SafeLandingNode(Node):
             bad_cell_fraction=d("look_bad_cell_fraction", 0.10).value)
         self.feel_params = FeelParams(
             check_radius_m=d("feel_check_radius_m", 1.3).value,
+            bump_radius_m=self.look_params.required_radius_m,
             max_slope_deg=d("max_slope_deg", 10.0).value,
             bump_threshold_m=d("bump_threshold_m", 0.12).value,
             min_points=d("feel_min_points", 80).value)
