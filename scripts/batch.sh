@@ -3,7 +3,9 @@
 #
 #   ./scripts/batch.sh c1_field 30
 #
-# Each run starts from a slightly different spot (up to 2 m away).
+# Each run starts from a slightly different spot (up to 2 m away) and after
+# a random wait (0-40 s), so the walking person in c4_dynamic arrives at a
+# different moment of the landing each time.
 set -o pipefail
 WORLD=${1:-c1_field}
 N=${2:-30}
@@ -15,9 +17,10 @@ mkdir -p "$LOGS"
 for i in $(seq 1 "$N"); do
   DX=$(python3 -c "import random; print(round(random.uniform(-2, 2), 2))")
   DY=$(python3 -c "import random; print(round(random.uniform(-2, 2), 2))")
+  WAIT=$(python3 -c "import random; print(random.randint(0, 40))")
   before=$(ls "$LOGS"/*_result.json 2>/dev/null | wc -l)
-  echo "=== run $i/$N (spawn offset $DX, $DY) ==="
-  HEADLESS=1 SPAWN_DX=$DX SPAWN_DY=$DY "$REPO/scripts/run_sim.sh" "$WORLD" > "/tmp/run_${WORLD}_$i.log" 2>&1 &
+  echo "=== run $i/$N (spawn offset $DX, $DY, start after $WAIT s) ==="
+  HEADLESS=1 SPAWN_DX=$DX SPAWN_DY=$DY START_DELAY=$WAIT "$REPO/scripts/run_sim.sh" "$WORLD" > "/tmp/run_${WORLD}_$i.log" 2>&1 &
   pid=$!
   for s in $(seq 1 "$TIMEOUT"); do
     now=$(ls "$LOGS"/*_result.json 2>/dev/null | wc -l)

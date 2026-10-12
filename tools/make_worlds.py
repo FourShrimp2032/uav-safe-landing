@@ -162,6 +162,20 @@ def object_footprint(obj: dict) -> tuple[str, tuple]:
     raise ValueError(k)
 
 
+def actor_xy(world: dict, t: float):
+    """Where the walking person is at simulation time t (None if no person).
+    Straight lines between waypoints; Gazebo smooths the corners a little."""
+    wps = world.get("actor")
+    if not wps:
+        return None
+    t = t % wps[-1][0]
+    for (t0, x0, y0, _), (t1, x1, y1, _) in zip(wps, wps[1:]):
+        if t0 <= t <= t1:
+            a = (t - t0) / (t1 - t0) if t1 > t0 else 0.0
+            return x0 + a * (x1 - x0), y0 + a * (y1 - y0)
+    return wps[-1][1], wps[-1][2]
+
+
 def distance_to_hazards(world: dict, x: float, y: float) -> float:
     """Distance from (x, y) to the nearest hazard edge (negative = inside)."""
     best = math.inf

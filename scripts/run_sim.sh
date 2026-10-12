@@ -6,6 +6,8 @@
 #
 # Worlds: c1_field, c2_hill, c3_town, c4_dynamic
 # Optional: SPAWN_DX / SPAWN_DY move the start point (metres).
+#           START_DELAY waits this many seconds before take-off, so the walking
+#           person in c4_dynamic is somewhere else in their loop.
 set -eo pipefail
 WORLD=${1:-c1_field}
 REPO=$(cd "$(dirname "$0")/.." && pwd)
@@ -56,6 +58,10 @@ for i in $(seq 1 180); do
   sleep 1
 done
 grep -q "Ready for takeoff" /tmp/px4/px4.log || echo "WARNING: PX4 didn't report 'Ready for takeoff' yet; continuing (see /tmp/px4/px4.log)"
+if [ "${START_DELAY:-0}" != "0" ]; then
+  echo "Waiting ${START_DELAY} s before take-off..."
+  sleep "$START_DELAY"
+fi
 echo "PX4 ready. Starting MAVROS and the landing node..."
 ros2 launch safe_landing sim.launch.py world:="$WORLD" spawn_dx:="$DX" spawn_dy:="$DY" \
   log_dir:=/root/landing_logs

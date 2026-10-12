@@ -7,15 +7,18 @@ Reads <logs_dir>/<world>/*_result.json (default logs dir: /root/landing_logs
 in the container, ./logs on your Mac).
 """
 import json
+import math
 import statistics
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from make_worlds import WORLDS, distance_to_hazards, terrain_slope_deg  # noqa: E402
+from make_worlds import WORLDS, actor_xy, distance_to_hazards, terrain_slope_deg  # noqa: E402
 
 MAX_SLOPE = 10.0
 MIN_CLEARANCE = 0.5
+PERSON_CLEARANCE = 1.5   # landing circle (1 m) + half a person
+PERSON_WINDOW = (-4.0, 1.0)  # seconds around touchdown that count
 MAX_ERROR = 0.30
 
 
@@ -31,7 +34,22 @@ def judge(world, r):
         return False, f"landed on {slope:.0f} deg slope"
     if clear < MIN_CLEARANCE:
         return False, f"landed {clear:.2f} m from a hazard"
+    person = closest_person(world, r, x, y)
+    if person is not None and person < PERSON_CLEARANCE:
+        return False, f"person {person:.1f} m away at touchdown"
     return True, "safe landing"
+
+
+def closest_person(world, r, x, y):
+    """Closest the walking person came to the landing point around touchdown."""
+    if not world.get("actor"):
+        return None
+    t_td = next((e["t"] for e in r.get("events", []) if e["why"] == "touchdown"), None)
+    if t_td is None:
+        return None
+    ts = [t_td + PERSON_WINDOW[0] + 0.1 * i
+          for i in range(int(10 * (PERSON_WINDOW[1] - PERSON_WINDOW[0])) + 1)]
+    return min(math.hypot(px - x, py - y) for px, py in (actor_xy(world, t) for t in ts))
 
 
 def main():
