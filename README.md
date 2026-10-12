@@ -57,6 +57,13 @@ ros2 topic echo /landing/status                              # state, height, gr
 rviz2                                                        # add PointCloud2 /landing/debug/feel_points (frame: map)
 ```
 
+### Replaying what the camera saw
+Every run records the debug picture in its rosbag. To turn the newest run of a world into a video:
+```bash
+python3 tools/debug_video.py c3_town
+```
+This writes `logs/c3_town/bag_<time>_look.mp4` and a folder with one picture per LOOK / CONFIRM decision, which you can open on your Mac. The colours are the same as in the live view.
+
 ### Results and KPIs
 Each run writes to `logs/<world>/` on your Mac:
 - `*_log.csv`: state, position, height, ground-check numbers, at 10 Hz (NFR-04)
