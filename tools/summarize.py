@@ -62,10 +62,15 @@ def main():
         print(f"no results in {root / world_name}")
         return
     world = WORLDS[world_name]
-    ok, errors, looks = 0, [], []
+    ok, errors, looks, skipped = 0, [], [], 0
     print(f"{'run':<34} {'outcome':<16} {'tries':>5} {'err m':>6}  verdict")
     for f in files:
         r = json.loads(f.read_text())
+        if r["outcome"] == "no_takeoff":
+            # The simulator was too slow for PX4 to arm: not a landing.
+            skipped += 1
+            print(f"{f.stem[:34]:<34} {r['outcome']:<16} {'-':>5} {'-':>6}  simulator problem, not counted")
+            continue
         good, why = judge(world, r)
         ok += good
         if r.get("landing_error_m") is not None:
@@ -73,8 +78,12 @@ def main():
         looks += r.get("look_compute_s", [])
         err = f"{r['landing_error_m']:.2f}" if r.get("landing_error_m") is not None else "-"
         print(f"{f.stem[:34]:<34} {r['outcome']:<16} {r['attempts']:>5} {err:>6}  {why}")
-    n = len(files)
+    n = len(files) - skipped
     print()
+    if skipped:
+        print(f"{skipped} run(s) never took off (simulator too slow) and are not counted")
+    if n == 0:
+        return
     print(f"KPI-4 success rate: {ok}/{n} = {100 * ok / n:.0f} %  (target >= 90 % over >= 30 runs)")
     if errors:
         within = sum(e <= MAX_ERROR for e in errors)

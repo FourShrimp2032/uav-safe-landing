@@ -31,6 +31,7 @@ safe_landing:
     camera_hfov_deg: 102.0        # Pi Camera Module 3 Wide
     camera_offset: [0.05, 0.0, -0.06]
     camera_timeout_s: 5.0         # no frame for this long = camera failed (slow sims lag)
+    takeoff_timeout_s: 180.0      # wall-clock seconds; PX4 not armed by then = simulator problem
     # Rangefinders (body frame FLU, metres)
     range_down_offset: [-0.03, 0.0, -0.06]
     range_tilt_offset: [0.0, 0.0, -0.06]
