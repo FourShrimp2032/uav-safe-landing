@@ -28,6 +28,11 @@ for i in $(seq 1 "$N"); do
     sleep 1
   done
   [ "$now" -gt "$before" ] || echo "run $i timed out (log: /tmp/run_${WORLD}_$i.log)"
+  # Stop this run. Killing only run_sim.sh isn't enough: bash runs its exit
+  # trap after the ros2 launch in the foreground returns, which it never does.
+  pkill -f "ros2 launch safe_landing" 2>/dev/null
+  pkill -x px4 2>/dev/null
+  pkill -f "gz sim" 2>/dev/null
   kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
   sleep 3
 done
