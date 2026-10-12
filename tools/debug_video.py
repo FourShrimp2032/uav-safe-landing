@@ -32,7 +32,9 @@ DECISION_STATES = {"LOOK", "CONFIRM"}
 def find_bag(arg: str) -> str:
     if os.path.isdir(arg):
         return arg
-    bags = sorted(b for b in glob.glob(os.path.join(LOG_ROOT, arg, "bag_*")) if os.path.isdir(b))
+    # bag_<time>_look/ is this tool's own picture folder, not a recording.
+    bags = sorted(b for b in glob.glob(os.path.join(LOG_ROOT, arg, "bag_*"))
+                  if os.path.isdir(b) and not b.endswith("_look"))
     if not bags:
         sys.exit(f"no bags in {os.path.join(LOG_ROOT, arg)}")
     return bags[-1]
