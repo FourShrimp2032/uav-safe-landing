@@ -40,7 +40,12 @@ RUN git clone --branch ${PX4_VERSION} --depth 1 --recursive --shallow-submodules
         https://github.com/PX4/PX4-Autopilot.git ${PX4_DIR} \
     && bash ${PX4_DIR}/Tools/setup/ubuntu.sh --no-nuttx \
     && rm -rf /var/lib/apt/lists/*
-RUN cd ${PX4_DIR} && make px4_sitl
+# PX4's version script reads the NuttX submodule's release tags, which a
+# shallow clone doesn't have. SITL doesn't use NuttX, so a placeholder tag
+# is enough to let the build start.
+RUN cd ${PX4_DIR} \
+    && git -C platforms/nuttx/NuttX/nuttx tag -f nuttx-0.0.0 \
+    && make px4_sitl
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh \
