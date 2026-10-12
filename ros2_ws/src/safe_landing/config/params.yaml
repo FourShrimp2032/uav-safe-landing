@@ -14,6 +14,7 @@ safe_landing:
     max_looks: 8
     final_hold_timeout_s: 10.0
     required_radius_m: 1.0        # FR-06 landing circle radius
+    clearance_credit_m: 3.0       # prefer spots with up to this much open ground around them (keeps away from walls)
     max_slope_deg: 10.0           # FR-04
     bump_threshold_m: 0.12        # rocks / holes bigger than this abort the landing
     feel_check_radius_m: 1.3

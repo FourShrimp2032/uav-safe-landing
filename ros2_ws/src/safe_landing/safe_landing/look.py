@@ -30,6 +30,7 @@ class LookParams:
     bad_cell_fraction: float = 0.10     # cell is bad above this share of bad pixels
     required_radius_m: float = 1.0      # FR-06: R ~ 1.5 x drone size
     distance_weight: float = 0.5        # metres of clearance worth 1 m closer to the centre
+    clearance_credit_m: float = 3.0     # extra room counts up to this much clearance
     max_candidates: int = 3
     min_separation_m: float = 3.0       # between returned candidates
     # Colour rules, OpenCV HSV (H 0-179, S and V 0-255).
@@ -123,7 +124,7 @@ def find_spots(bgr: np.ndarray, gsd_m: float, center_uv=None, blocked_uv=(),
     cu, cv_ = center_uv if center_uv is not None else (w / 2.0, h / 2.0)
     dist_center = np.hypot(U - cu, V - cv_) * gsd_m
     eligible = clearance >= p.required_radius_m
-    score = np.minimum(clearance, 2 * p.required_radius_m) - p.distance_weight * dist_center
+    score = np.minimum(clearance, p.clearance_credit_m) - p.distance_weight * dist_center
     score = np.where(eligible, score, -np.inf)
 
     picks = []
