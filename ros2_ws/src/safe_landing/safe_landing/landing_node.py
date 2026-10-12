@@ -87,6 +87,7 @@ class SafeLandingNode(Node):
         self.max_looks = d("max_looks", 8).value
         self.final_hold_timeout = d("final_hold_timeout_s", 10.0).value
         self.moving_buffer = d("moving_buffer_m", 1.5).value
+        self.static_margin = d("static_margin_m", 0.5).value
         self.slope_block_radius = d("slope_block_radius_m", 4.0).value
         self.log_dir = os.path.expanduser(d("log_dir", "~/landing_logs").value)
         # camera
@@ -131,6 +132,9 @@ class SafeLandingNode(Node):
         self.img_t = -1e9
         self.img_pose = None
         self.moving_world: list[tuple[float, float, float]] = []   # x, y, radius (m)
+        # Ground under cells the last confirm found bad (roofs, trees, rocks).
+        # Things there that seem to move during the descent are parallax.
+        self.static_bad = np.zeros((0, 2))
         self.moving_t = -1e9
         self.sp = None             # [x, y, z, yaw]
         self.state = S.WAIT_FCU
@@ -261,13 +265,20 @@ class SafeLandingNode(Node):
             return
         self.down_hit = beam_hit(r, self.R_wb, self.t_wb, self.down_offset, self.down_dir)
         self.ground_z = 0.9 * self.ground_z + 0.1 * float(self.down_hit[2])
-        if self.feel is not None:
+        if self.feeling():
             self.feel.add_point(*self.down_hit)
+
+    def feeling(self) -> bool:
+        """Collect ground points only in the slow, turning part of the descent.
+        Points from higher up span a long stretch of time, and any drift in
+        the height estimate over it would look like bumps."""
+        return (self.feel is not None and self.state == S.DESCEND
+                and self.agl() < self.feel_start_agl + 0.5)
 
     def on_tilt(self, msg: LaserScan) -> None:
         self.last_tilt = self.now()
         r = self._range(msg)
-        if r is None or self.t_wb is None or self.feel is None:
+        if r is None or self.t_wb is None or not self.feeling():
             return
         self.feel.add_point(*beam_hit(r, self.R_wb, self.t_wb, self.tilt_offset, self.tilt_dir))
 
@@ -282,12 +293,17 @@ class SafeLandingNode(Node):
         agl = self.agl()
         if self.state in OFFBOARD_STATES and agl > self.final_agl:
             gsd = self.cam.gsd(agl)
-            blobs = self.motion.update(self.img, gsd)
+            R_wb, t_wb = self.img_pose
+            descending = self.state == S.DESCEND
+            epipole = (self.cam.ground_to_pixel(t_wb[0], t_wb[1], self.ground_z, R_wb, t_wb)
+                       if descending else None)
+            blobs = self.motion.update(self.img, gsd, epipole, agl)
             world = []
             for b in blobs:
-                xy = self.cam.pixel_to_ground(b.u, b.v, *self.img_pose, self.ground_z)
-                if xy is not None:
-                    world.append((xy[0], xy[1], b.radius_px * gsd))
+                xy = self.cam.pixel_to_ground(b.u, b.v, R_wb, t_wb, self.ground_z)
+                if xy is None or (descending and self.on_static_obstacle(xy)):
+                    continue
+                world.append((xy[0], xy[1], b.radius_px * gsd))
             self.moving_world = world
             if world:
                 self.moving_t = self.now()
@@ -295,6 +311,27 @@ class SafeLandingNode(Node):
                 self.publish_debug(None, blobs)
         else:
             self.motion.reset()
+
+    def on_static_obstacle(self, xy) -> bool:
+        if not len(self.static_bad):
+            return False
+        reach = 0.71 * self.look_params.cell_m + self.static_margin
+        return bool((np.hypot(*(self.static_bad - np.asarray(xy)).T) < reach).any())
+
+    def static_obstacles(self) -> np.ndarray:
+        """Ground positions of the cells the camera sees as obstacles now.
+        Run without the blocked areas: a spot blocked because someone walked
+        there must not hide that person later."""
+        R_wb, t_wb = self.img_pose
+        gsd = self.cam.gsd(max(t_wb[2] - self.ground_z, 1.0))
+        result = find_spots(self.img, gsd, params=self.look_params)
+        out = []
+        for r, c in zip(*np.nonzero(result.cell_bad)):
+            xy = self.cam.pixel_to_ground((c + 0.5) * result.cell_px, (r + 0.5) * result.cell_px,
+                                          R_wb, t_wb, self.ground_z)
+            if xy is not None:
+                out.append(xy)
+        return np.array(out, float).reshape(-1, 2)
 
     # ------------------------------------------------------------ main loop
     def step(self) -> None:
@@ -440,7 +477,7 @@ class SafeLandingNode(Node):
         clearance = result.clearance_at(*uv) if uv is not None else 0.0
         self.publish_debug(result, target_uv=uv)
         if clearance >= 0.8 * self.R:
-            self.start_descent(f"confirmed, clearance {clearance:.2f} m")
+            self.start_descent(f"confirmed, clearance {clearance:.2f} m", self.static_obstacles())
             return
         self.bad_spots.append((self.target[0], self.target[1], self.R))
         if self.queue:
@@ -448,7 +485,9 @@ class SafeLandingNode(Node):
         else:
             self.goto(S.LOOK, f"spot no longer clear ({clearance:.2f} m), looking again")
 
-    def start_descent(self, why: str) -> None:
+    def start_descent(self, why: str, static_bad=None) -> None:
+        self.static_bad = static_bad if static_bad is not None else np.zeros((0, 2))
+        self.motion.reset()
         self.feel = GroundFeel(self.target, self.feel_params)
         self.feel_result = None
         self.hold_t = None
