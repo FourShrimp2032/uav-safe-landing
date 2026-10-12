@@ -37,7 +37,10 @@
       <intensity>1</intensity>
       <direction>-0.4 0.3 -0.87</direction>
       <diffuse>0.9 0.9 0.85 1</diffuse>
-      <specular>0.2 0.2 0.2 1</specular>
+      <!-- No specular light: otherwise the sun shows up as a bright spot on
+           the grass that slides around as the drone moves, and the
+           moving-object check takes it for something walking. -->
+      <specular>0 0 0 1</specular>
     </light>
 
     <spherical_coordinates>
