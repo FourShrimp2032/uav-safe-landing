@@ -39,5 +39,10 @@ for i in $(seq 1 "$N"); do
   pkill -f "gz sim" 2>/dev/null
   kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
   sleep 3
+  # Anything that ignored the polite kill would share the simulator with the
+  # next run, so force it.
+  pkill -9 -f "ros2 launch safe_landing" 2>/dev/null
+  pkill -9 -x px4 2>/dev/null
+  pkill -9 -f "gz sim" 2>/dev/null
 done
 python3 "$REPO/tools/summarize.py" "$WORLD"
