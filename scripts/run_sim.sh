@@ -43,16 +43,18 @@ cleanup() {
   pkill -f "ros2 launch safe_landing" 2>/dev/null || true
   pkill -x px4 2>/dev/null || true
   pkill -f "gz sim" 2>/dev/null || true
+  pkill -TERM -f "ros2 bag record" 2>/dev/null || true
   # A Gazebo server that ignores the polite kill keeps running in the
   # background and the next run shares the simulator with it (PX4 then
   # never arms). Give everything 5 s, then force it.
   for _ in 1 2 3 4 5; do
-    pgrep -f "gz sim|ros2 launch safe_landing" > /dev/null || pgrep -x px4 > /dev/null || return 0
+    pgrep -f "gz sim|ros2 launch safe_landing|ros2 bag record" > /dev/null || pgrep -x px4 > /dev/null || return 0
     sleep 1
   done
   pkill -9 -f "ros2 launch safe_landing" 2>/dev/null || true
   pkill -9 -x px4 2>/dev/null || true
   pkill -9 -f "gz sim" 2>/dev/null || true
+  pkill -9 -f "ros2 bag record" 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
 cleanup
