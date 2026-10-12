@@ -29,8 +29,11 @@ for i in $(seq 1 "$N"); do
   done
   [ "$now" -gt "$before" ] || echo "run $i timed out (log: /tmp/run_${WORLD}_$i.log)"
   # Close the recording first, gently, so the bag gets finished and indexed
-  # (killed hard it ends up empty and debug_video.py can't read it).
-  pkill -INT -f "ros2 bag record" 2>/dev/null
+  # (killed hard it ends up empty and debug_video.py can't read it). TERM,
+  # not INT: the run was started in the background with &, and bash makes
+  # background jobs ignore Ctrl+C, so INT never reached the recorder and old
+  # recorders piled up, eating the CPU.
+  pkill -TERM -f "ros2 bag record" 2>/dev/null
   for s in $(seq 1 15); do pgrep -f "ros2 bag record" > /dev/null || break; sleep 1; done
   # Stop this run. Killing only run_sim.sh isn't enough: bash runs its exit
   # trap after the ros2 launch in the foreground returns, which it never does.
@@ -44,5 +47,6 @@ for i in $(seq 1 "$N"); do
   pkill -9 -f "ros2 launch safe_landing" 2>/dev/null
   pkill -9 -x px4 2>/dev/null
   pkill -9 -f "gz sim" 2>/dev/null
+  pkill -9 -f "ros2 bag record" 2>/dev/null
 done
 python3 "$REPO/tools/summarize.py" "$WORLD"
