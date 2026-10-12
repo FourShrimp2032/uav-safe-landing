@@ -1,0 +1,53 @@
+world: c4_dynamic
+title: 'C4 dynamic: a person walks into the landing zone'
+mission_xy:
+- 6.0
+- 0.0
+spawn_xy:
+- 0.0
+- 0.0
+hill: null
+objects:
+- kind: bush
+  x: 3.0
+  y: 4.0
+  r: 0.7
+- kind: bush
+  x: 10.0
+  y: -3.0
+  r: 0.8
+- kind: rock
+  x: 8.0
+  y: 3.0
+  size: 0.25
+actor_waypoints:
+- - 0.0
+  - 6.0
+  - -12.0
+  - 1.5708
+- - 12.0
+  - 6.0
+  - -12.0
+  - 1.5708
+- - 18.0
+  - 6.0
+  - 0.0
+  - 1.5708
+- - 22.0
+  - 6.0
+  - 0.0
+  - 0.0
+- - 26.0
+  - 14.0
+  - 0.0
+  - -1.5708
+- - 32.0
+  - 14.0
+  - -12.0
+  - 3.1416
+- - 36.0
+  - 6.0
+  - -12.0
+  - 1.5708
+safety_rule: landing is safe if slope < 10 deg and the nearest hazard edge is >= 0.5
+  m away

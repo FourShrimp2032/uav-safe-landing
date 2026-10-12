@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  x500 + landing module.
+
+  Sensor frames: in Gazebo a camera looks along its +X axis and a gpu_lidar
+  ray also points along +X. Pitching a sensor by +90 deg (1.5708 rad) turns
+  +X to point straight down. With the camera pitched like this, the top of
+  the image is the drone's forward direction and image-right is the drone's
+  right. safe_landing/geometry.py assumes exactly this mounting.
+
+  The tilted rangefinder is pitched by 90 - 15 = 75 deg (1.3090 rad), so its
+  beam points down and 15 deg forward. Change TILT here and in
+  config/params.yaml together.
+-->
+<sdf version="1.9">
+  <model name="x500_landing">
+    <include merge="true">
+      <uri>x500</uri>
+    </include>
+
+    <link name="landing_module_link">
+      <pose>0 0 -0.06 0 0 0</pose>
+      <inertial>
+        <mass>0.15</mass>
+        <inertia>
+          <ixx>0.0001</ixx><iyy>0.0001</iyy><izz>0.0001</izz>
+          <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+        </inertia>
+      </inertial>
+
+      <!-- Pi Camera Module 3 class camera: 66 deg horizontal FOV.
+           960x540 keeps software rendering usable on a Mac; at 15 m this
+           is about 2 cm per pixel. -->
+      <sensor name="landing_camera" type="camera">
+        <pose>0.05 0 0 0 1.5708 0</pose>
+        <always_on>1</always_on>
+        <update_rate>5</update_rate>
+        <topic>/landing/camera/image</topic>
+        <camera>
+          <horizontal_fov>1.1519</horizontal_fov>
+          <image>
+            <width>960</width>
+            <height>540</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.1</near>
+            <far>200</far>
+          </clip>
+        </camera>
+      </sensor>
+
+      <!-- TF-Luna style single-point rangefinder, straight down. -->
+      <sensor name="range_down" type="gpu_lidar">
+        <pose>-0.03 0 0 0 1.5708 0</pose>
+        <always_on>1</always_on>
+        <update_rate>50</update_rate>
+        <topic>/landing/range_down/scan</topic>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>1</samples>
+              <resolution>1</resolution>
+              <min_angle>0</min_angle>
+              <max_angle>0</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.3</min>
+            <max>12.0</max>
+            <resolution>0.01</resolution>
+          </range>
+          <noise>
+            <type>gaussian</type>
+            <mean>0</mean>
+            <stddev>0.02</stddev>
+          </noise>
+        </lidar>
+      </sensor>
+
+      <!-- Same rangefinder, tilted 15 deg forward. The drone yaws while it
+           descends, so this beam draws a spiral over the landing spot. -->
+      <sensor name="range_tilt" type="gpu_lidar">
+        <pose>0.0 0 0 0 1.3090 0</pose>
+        <always_on>1</always_on>
+        <update_rate>50</update_rate>
+        <topic>/landing/range_tilt/scan</topic>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>1</samples>
+              <resolution>1</resolution>
+              <min_angle>0</min_angle>
+              <max_angle>0</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.3</min>
+            <max>12.0</max>
+            <resolution>0.01</resolution>
+          </range>
+          <noise>
+            <type>gaussian</type>
+            <mean>0</mean>
+            <stddev>0.02</stddev>
+          </noise>
+        </lidar>
+      </sensor>
+    </link>
+
+    <joint name="landing_module_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>landing_module_link</child>
+    </joint>
+  </model>
+</sdf>
