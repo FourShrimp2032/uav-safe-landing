@@ -140,6 +140,8 @@ class SafeLandingNode(Node):
         self.queue: list[np.ndarray] = []
         self.target = None
         self.bad_spots: list[tuple[float, float, float]] = []
+        # (x, y, ux, uy): spot rejected for slope and the uphill direction there
+        self.slope_hints: list[tuple[float, float, float, float]] = []
         self.feel: GroundFeel | None = None
         self.feel_result = None
         self.attempts = 0
@@ -395,9 +397,15 @@ class SafeLandingNode(Node):
             uv = self.cam.ground_to_pixel(x, y, self.ground_z, R_wb, t_wb)
             if uv is not None:
                 blocked.append((uv[0], uv[1], r / gsd))
+        sides = []
+        for (x, y, ux, uy) in self.slope_hints:
+            a = self.cam.ground_to_pixel(x, y, self.ground_z, R_wb, t_wb)
+            b = self.cam.ground_to_pixel(x + ux, y + uy, self.ground_z, R_wb, t_wb)
+            if a is not None and b is not None:
+                sides.append((a[0], a[1], b[0] - a[0], b[1] - a[1]))
         center = self.cam.ground_to_pixel(self.mission_xy[0], self.mission_xy[1], self.ground_z,
                                           R_wb, t_wb)
-        return find_spots(self.img, gsd, center, blocked, self.look_params), gsd
+        return find_spots(self.img, gsd, center, blocked, self.look_params, sides), gsd
 
     def recent_moving(self, extra: float):
         if self.now() - self.moving_t > 2.0:
@@ -484,6 +492,13 @@ class SafeLandingNode(Node):
     def go_around(self, why: str) -> None:
         radius = self.slope_block_radius if why.startswith("slope") else self.R + 0.5
         self.bad_spots.append((self.target[0], self.target[1], radius))
+        fr = self.feel_result
+        if why.startswith("slope") and fr is not None and math.hypot(*fr.uphill) > 1e-3:
+            # Flat ground is more likely downhill (the foot of a hill, a valley
+            # floor), so stop looking on the uphill side of this spot.
+            n = math.hypot(*fr.uphill)
+            self.slope_hints.append((self.target[0], self.target[1],
+                                     fr.uphill[0] / n, fr.uphill[1] / n))
         self.attempts += 1
         self.feel = None
         self.goto(S.GO_AROUND, f"FR-10: {why}")
@@ -538,6 +553,7 @@ class SafeLandingNode(Node):
                 "slope_deg": round(fr.slope_deg, 2), "bumps": fr.bump_points,
                 "max_residual_m": round(fr.max_residual_m, 3)},
             "bad_spots": self.bad_spots,
+            "slope_hints": self.slope_hints,
             "events": self.events,
             "sim_time_s": round(self.now(), 1),
             "wall_time_s": round(time.time() - self.start_wall, 1),

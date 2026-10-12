@@ -83,13 +83,16 @@ def bad_pixel_mask(bgr: np.ndarray, gsd_m: float, p: LookParams) -> np.ndarray:
 
 
 def find_spots(bgr: np.ndarray, gsd_m: float, center_uv=None, blocked_uv=(),
-               params: LookParams | None = None) -> LookResult:
+               params: LookParams | None = None, blocked_sides=()) -> LookResult:
     """Rank landing spots in one image.
 
     gsd_m      ground size of one pixel (metres), e.g. Camera.gsd(agl)
     center_uv  pixel of the mission centre (default: image centre)
     blocked_uv list of (u, v, radius_px) circles to treat as bad, e.g. spots
                that already failed the rangefinder check or moving objects
+    blocked_sides  list of (u, v, du, dv): everything on the (du, dv) side of
+               the line through (u, v) is bad. Used to stop searching uphill
+               after a slope was found.
     """
     p = params or LookParams()
     h, w = bgr.shape[:2]
@@ -108,6 +111,8 @@ def find_spots(bgr: np.ndarray, gsd_m: float, center_uv=None, blocked_uv=(),
     U, V = np.meshgrid(cc, rr)
     for (bu, bv, brad) in blocked_uv:
         cell_bad |= (U - bu) ** 2 + (V - bv) ** 2 <= brad ** 2
+    for (su, sv, du, dv) in blocked_sides:
+        cell_bad |= (U - su) * du + (V - sv) * dv > 0
 
     # Clearance: distance (in cells) to the nearest bad cell. The image
     # border counts as bad, because we can't see what's beyond it.
