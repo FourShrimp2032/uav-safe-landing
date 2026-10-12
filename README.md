@@ -112,6 +112,7 @@ GitHub Actions runs them on every push.
 
 - The algorithms pass their unit tests. **The full Gazebo run has not been tried end to end yet.** The first run may need small fixes: topic names, PX4 start-up timing, or thresholds tuned to how Gazebo actually renders the textures. Start with `c1_field`.
 - **Shadows:** the drone's own shadow moves when the drone moves, which can look like a moving object. Shadows are turned off in C1, C2 and C4 and on in C3 (NFR-05). Expect to tune `motion.py` there.
+- **Sun glare:** a reflection of the sun (on water, a wet roof, a car) slides across the picture as the drone moves, so the moving-object check can take it for something moving. The simulated sun has no specular light for this reason; test over shiny surfaces outdoors.
 - **Thin obstacles** such as power lines and thin branches aren't seen reliably by either sensor.
 - **Sparse coverage:** a small rock between two loops of the spiral can be missed. Descending slower or turning faster makes the spiral denser.
 - **Real sunlight** shortens the TF-Luna's range on dark grass. The check starts at 5 m, so test outdoors early.
