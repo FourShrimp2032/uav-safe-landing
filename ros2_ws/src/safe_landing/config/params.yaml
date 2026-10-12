@@ -27,7 +27,7 @@ safe_landing:
     camera_height: 540
     camera_hfov_deg: 66.0
     camera_offset: [0.05, 0.0, -0.06]
-    camera_timeout_s: 2.0
+    camera_timeout_s: 5.0         # no frame for this long = camera failed (slow sims lag)
     # Rangefinders (body frame FLU, metres)
     range_down_offset: [-0.03, 0.0, -0.06]
     range_tilt_offset: [0.0, 0.0, -0.06]
