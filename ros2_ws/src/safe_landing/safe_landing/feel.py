@@ -104,12 +104,16 @@ class GroundFeel:
         ground_z = float(coef[0] * self.tx + coef[1] * self.ty + coef[2])
         complete = n >= p.min_points and sectors >= p.min_sectors
 
+        # No verdict from a handful of points: on a curved hillside the first
+        # few look like bumps. Slope is judged before bumps, because a slope
+        # verdict also tells the drone which way to search next.
+        ready = complete or (n >= p.early_slope_points and sectors >= 4)
         reason = "ok"
         unsafe = False
-        if bumps >= p.min_bump_points:
-            unsafe, reason = True, f"bump: {bumps} points off the ground by >{p.bump_threshold_m:.2f} m"
-        elif slope > p.max_slope_deg and (complete or (n >= p.early_slope_points and sectors >= 4)):
+        if ready and slope > p.max_slope_deg:
             unsafe, reason = True, f"slope {slope:.1f} deg > {p.max_slope_deg:.0f}"
+        elif ready and bumps >= p.min_bump_points:
+            unsafe, reason = True, f"bump: {bumps} points off the ground by >{p.bump_threshold_m:.2f} m"
         elif not complete:
             reason = f"collecting ({n} pts, {sectors}/{p.sectors} sectors)"
         return FeelResult(n, sectors, slope, bumps, float(np.abs(res).max()), ground_z,

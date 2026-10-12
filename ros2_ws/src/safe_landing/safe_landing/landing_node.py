@@ -95,7 +95,7 @@ class SafeLandingNode(Node):
         hfov = math.radians(d("camera_hfov_deg", 66.0).value)
         self.cam = Camera(*intrinsics_from_fov(w, h, hfov),
                           offset_body=d("camera_offset", [0.05, 0.0, -0.06]).value)
-        self.camera_timeout = d("camera_timeout_s", 2.0).value
+        self.camera_timeout = d("camera_timeout_s", 5.0).value
         # rangefinders
         self.down_offset = np.array(d("range_down_offset", [-0.03, 0.0, -0.06]).value)
         self.tilt_offset = np.array(d("range_tilt_offset", [0.0, 0.0, -0.06]).value)
@@ -363,6 +363,8 @@ class SafeLandingNode(Node):
         if self.in_state() < 1.0:
             return  # let the drone settle
         if not self.camera_ok():
+            if self.in_state() < 1.0 + self.camera_timeout:
+                return  # a slow renderer can be late; give it a moment
             if "camera" not in self.degraded:
                 self.degraded.append("camera")
             self.queue = [self.t_wb[:2].copy()]

@@ -87,3 +87,23 @@ def test_plane_fit_ignores_one_outlier():
     z[0] += 1.0
     coef, res = fit_plane(np.c_[xy, z], 0.12)
     assert abs(coef[0] - 0.1) < 0.01 and abs(res[0]) > 0.9
+
+
+def test_slope_wins_over_early_bumps():
+    # 20 deg slope where the first readings are noisy (as on Gazebo's
+    # triangulated hill): the verdict must be "slope", so the drone learns
+    # which way is uphill.
+    rng = np.random.default_rng(3)
+    feel = GroundFeel((0.0, 0.0), FeelParams())
+    k = math.tan(math.radians(20))
+    for i in range(300):
+        a = i * 0.15
+        r = 0.4 + 0.9 * (i % 50) / 50
+        x, y = r * math.cos(a), r * math.sin(a)
+        z = k * x + (0.2 if i < 5 else rng.normal(0, 0.01))
+        feel.add_point(x, y, z)
+        res = feel.evaluate()
+        if res.unsafe:
+            break
+    assert res.unsafe and res.reason.startswith("slope"), res.reason
+    assert res.uphill[0] > 0.3 and abs(res.uphill[1]) < 0.1
