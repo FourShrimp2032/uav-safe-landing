@@ -4,15 +4,15 @@ A quadcopter lands safely on unprepared ground using one downward camera and two
 
 ## How it works
 
-1. **Look (15 m up):** the camera image is cut into 25 cm squares. A square is bad if it isn't grass or dirt coloured, or if its texture is busy (bushes, rocks, roofs, objects). The drone picks the open spot with at least 1 m clearance that is closest to the mission point. (`look.py`)
+1. **Look (10 m up):** the camera image is cut into 25 cm squares. A square is bad if it isn't grass or dirt coloured, or if its texture is busy (bushes, rocks, roofs, objects). The drone picks the open spot with at least 1 m clearance that is closest to the mission point. (`look.py`)
 2. **Move** over that spot and **confirm** it from straight above.
 3. **Descend and feel:** one rangefinder points straight down and one is tilted 15° forward. From 5 m down, the drone turns at 45°/s while descending, so the tilted laser dot draws a spiral over the landing circle. A plane is fitted to all the points:
    - tilt > 10° → slope, abort
    - points more than 12 cm off the plane → rock, hole or bush, abort
 
    (`feel.py`)
-4. Meanwhile the camera watches for **moving objects** (people, animals, cars) by aligning consecutive frames on the ground and looking for what still changed. Anything moving near the landing circle triggers an abort. Roofs and tree tops also seem to move while the drone descends (they are closer, so they grow faster in the picture). That is told apart because they move straight outwards from the point below the drone, and because the camera already saw them as obstacles before the descent. (`motion.py`)
-5. **Land** with PX4's AUTO.LAND if the ground check passed. Otherwise **go around**: climb back to 15 m, mark the spot as bad, and look again. After 3 failed attempts, return home (RTL).
+4. Meanwhile the camera watches for **moving objects** (people, animals, cars) by aligning consecutive frames on the ground and looking for what still changed. Anything moving near the landing circle triggers an abort, until the drone is 0.7 m above the ground. The camera is a wide-angle one (102°) so that it still sees a few metres around the spot near the ground. Roofs and tree tops also seem to move while the drone descends (they are closer, so they grow faster in the picture). That is told apart because they move straight outwards from the point below the drone, and because the camera already saw them as obstacles before the descent. (`motion.py`)
+5. **Land** with PX4's AUTO.LAND if the ground check passed. Otherwise **go around**: climb back to 10 m, mark the spot as bad, and look again. After 3 failed attempts, return home (RTL).
 
 The camera only decides *where to look*. The lasers decide *whether it's safe*, so a camera mistake (a shadow, a slope it can't see) costs a retry, not a crash.
 
@@ -21,10 +21,10 @@ The camera only decides *where to look*. The lasers decide *whether it's safe*, 
 | Part | Price | Mass |
 |---|---|---|
 | Raspberry Pi 5 (4 GB) + cooler | ~$65 | ~50 g |
-| Pi Camera Module 3, pointing down | ~$25 | ~4 g |
+| Pi Camera Module 3 Wide (102°), pointing down | ~$35 | ~4 g |
 | 2× Benewake TF-Luna (down + 15° tilt) | ~$45 | ~10 g |
 | 5 V BEC, cables, mount | ~$30 | ~70 g |
-| **Total** | **~$165** | **~135 g, ~9 W** |
+| **Total** | **~$175** | **~135 g, ~9 W** |
 
 ## Run it on a Mac
 
@@ -43,7 +43,7 @@ Gazebo and ROS 2 don't run natively on macOS, so everything runs in Docker and y
    docker compose exec sim bash
    ./scripts/run_sim.sh c1_field
    ```
-   The first run builds the ROS package. The drone takes off, flies to the mission point at 15 m, picks a spot, and lands. The terminal prints every decision (`LOOK -> MOVE ...`).
+   The first run builds the ROS package. The drone takes off, flies to the mission point at 10 m, picks a spot, and lands. The terminal prints every decision (`LOOK -> MOVE ...`).
 
 Gazebo renders on the CPU inside Docker, so it runs slower than real time. That's expected, and the landing logic runs on simulation time, so the results are the same.
 
@@ -119,7 +119,7 @@ GitHub Actions runs them on every push.
 ## Moving to the real drone
 
 - Wire the downward TF-Luna to the flight controller, so PX4 uses it for landing even if the Pi crashes. The Pi reads it back through MAVROS (`/mavros/distance_sensor/...`). Wire the tilted one to the Pi (UART or I2C). A small driver node then publishes both as `sensor_msgs/LaserScan` on `/landing/range_down/scan` and `/landing/range_tilt/scan`.
-- Use `camera_ros` (libcamera) for the Pi camera. Calibrate it, and put the real FOV and resolution in `params.yaml` *and* in `model.sdf`, so the simulation sees what the real camera sees.
+- Use `camera_ros` (libcamera) for the Pi camera. Calibrate it, and put the real FOV and resolution in `params.yaml` *and* in `model.sdf`, so the simulation sees what the real camera sees. The wide lens bends straight lines near the edges, so undistort each frame with the calibration (`cv2.undistort`) before the node uses it; the simulated camera has no distortion.
 - Set `auto_takeoff: false`. The pilot flies to the area and switches to OFFBOARD to hand over, and switching out of OFFBOARD at any time takes control back immediately.
 - MAVROS `fcu_url` becomes the serial port, for example `/dev/ttyAMA0:921600`.
 - Order: bench test, then hover and scan without landing (record bags), then land on a prepared pad, then rough ground. Always with a pilot ready to take over.

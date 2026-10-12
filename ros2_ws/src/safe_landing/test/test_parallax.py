@@ -12,9 +12,9 @@ from safe_landing.geometry import Camera, intrinsics_from_fov, quat_to_rot, yaw_
 from safe_landing.look import find_spots
 from safe_landing.motion import MotionDetector
 
-W, H = 960, 540
-CAM = Camera(*intrinsics_from_fov(W, H, math.radians(66)), offset_body=(0.05, 0, -0.06))
-HALF = Camera(*intrinsics_from_fov(W // 2, H // 2, math.radians(66)), offset_body=(0.05, 0, -0.06))
+W, H = 1280, 720   # Pi Camera Module 3 Wide, as in params.yaml
+CAM = Camera(*intrinsics_from_fov(W, H, math.radians(102)), offset_body=(0.05, 0, -0.06))
+HALF = Camera(*intrinsics_from_fov(W // 2, H // 2, math.radians(102)), offset_body=(0.05, 0, -0.06))
 BUFFER = 1.0 + 1.5   # landing circle + moving buffer (params.yaml)
 
 
@@ -30,10 +30,10 @@ def view(objects, x, y, z, yaw, tex):
 
 
 def descend(objects, x, y, tex, z_from, z_to, person=None):
-    """Like the node: confirm map at 15 m, then descend and watch. Returns
+    """Like the node: confirm map at 10 m, then descend and watch. Returns
     the moving objects that would have aborted the landing."""
-    img, R, t = view(objects, x, y, 15.0, 0.3, tex)
-    res = find_spots(img, CAM.gsd(15.0))
+    img, R, t = view(objects, x, y, 10.0, 0.3, tex)
+    res = find_spots(img, CAM.gsd(10.0))
     static = np.array([CAM.pixel_to_ground((c + .5) * res.cell_px, (r + .5) * res.cell_px, R, t, 0.0)
                        for r, c in zip(*np.nonzero(res.cell_bad))]).reshape(-1, 2)
     det, aborts, z, yaw, k = MotionDetector(), [], z_from, 0.3, 0
@@ -63,4 +63,14 @@ def test_person_walking_in_still_aborts(tex):
     def person(k):   # 2 m/s towards the spot
         return {"kind": "person", "x": 6.0 + 4.0 - 0.4 * k, "y": 0.0}
     aborts = descend(mw.WORLDS["c4_dynamic"]["objects"], 6.0, 0.0, tex, 12.0, 10.0, person)
+    assert aborts, "person not detected"
+
+
+def test_person_walking_in_near_the_ground_aborts(tex):
+    # The c4_dynamic run that went wrong: the person walked in from the side
+    # while the drone was only a few metres up. The wide camera still sees
+    # them in time to abort before the commit height.
+    def person(k):   # 2 m/s towards the spot, starting 5 m away
+        return {"kind": "person", "x": 6.0, "y": -5.0 + 0.4 * k}
+    aborts = descend(mw.WORLDS["c4_dynamic"]["objects"], 6.0, 0.0, tex, 3.0, 0.7, person)
     assert aborts, "person not detected"
