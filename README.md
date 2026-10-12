@@ -11,7 +11,7 @@ A quadcopter lands safely on unprepared ground using one downward camera and two
    - points more than 12 cm off the plane → rock, hole or bush, abort
 
    (`feel.py`)
-4. Meanwhile the camera watches for **moving objects** (people, animals, cars) by aligning consecutive frames and looking for what still changed. Anything moving near the landing circle triggers an abort. (`motion.py`)
+4. Meanwhile the camera watches for **moving objects** (people, animals, cars) by aligning consecutive frames on the ground and looking for what still changed. Anything moving near the landing circle triggers an abort. Roofs and tree tops also seem to move while the drone descends (they are closer, so they grow faster in the picture). That is told apart because they move straight outwards from the point below the drone, and because the camera already saw them as obstacles before the descent. (`motion.py`)
 5. **Land** with PX4's AUTO.LAND if the ground check passed. Otherwise **go around**: climb back to 15 m, mark the spot as bad, and look again. After 3 failed attempts, return home (RTL).
 
 The camera only decides *where to look*. The lasers decide *whether it's safe*, so a camera mistake (a shadow, a slope it can't see) costs a retry, not a crash.
