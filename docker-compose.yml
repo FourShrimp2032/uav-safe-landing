@@ -1,0 +1,16 @@
+# docker compose up -d --build     (first time: builds the image, 30-60 min)
+# docker compose exec sim bash     (a shell inside the simulator)
+# open http://localhost:6080/vnc.html to see Gazebo
+services:
+  sim:
+    build: ./docker
+    image: uav-safe-landing-sim:latest
+    container_name: uav-sim
+    ports:
+      - "6080:6080"
+    volumes:
+      - .:/workspace/uav-safe-landing
+      - ./logs:/root/landing_logs
+    shm_size: "2gb"
+    tty: true
+    stdin_open: true

@@ -1,0 +1,22 @@
+# Gazebo -> ROS 2 topics (ros_gz_bridge). Topic names are set in the
+# sensors' <topic> tags in sim/models/x500_landing/model.sdf.
+- ros_topic_name: "/clock"
+  gz_topic_name: "/clock"
+  ros_type_name: "rosgraph_msgs/msg/Clock"
+  gz_type_name: "gz.msgs.Clock"
+  direction: GZ_TO_ROS
+- ros_topic_name: "/landing/camera/image"
+  gz_topic_name: "/landing/camera/image"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+- ros_topic_name: "/landing/range_down/scan"
+  gz_topic_name: "/landing/range_down/scan"
+  ros_type_name: "sensor_msgs/msg/LaserScan"
+  gz_type_name: "gz.msgs.LaserScan"
+  direction: GZ_TO_ROS
+- ros_topic_name: "/landing/range_tilt/scan"
+  gz_topic_name: "/landing/range_tilt/scan"
+  ros_type_name: "sensor_msgs/msg/LaserScan"
+  gz_type_name: "gz.msgs.LaserScan"
+  direction: GZ_TO_ROS

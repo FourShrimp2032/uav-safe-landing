@@ -1,0 +1,55 @@
+world: c3_town
+title: 'C3 urban: houses, trees and a road; land in the courtyard'
+mission_xy:
+- 5.0
+- 6.0
+spawn_xy:
+- 0.0
+- -1.0
+hill: null
+objects:
+- kind: road
+  x: 0.0
+  y: -6.0
+  w: 60.0
+  d: 5.0
+- kind: house
+  x: 5.0
+  y: 6.0
+  w: 8.0
+  d: 6.0
+  h: 5.0
+  roof: grey
+- kind: house
+  x: 19.0
+  y: 6.0
+  w: 8.0
+  d: 6.0
+  h: 6.0
+  roof: red
+- kind: house
+  x: 12.0
+  y: 17.0
+  w: 10.0
+  d: 6.0
+  h: 5.0
+  roof: red
+- kind: tree
+  x: 12.0
+  y: 11.0
+  r: 1.8
+- kind: tree
+  x: -2.0
+  y: 9.0
+  r: 2.0
+- kind: tree
+  x: 25.0
+  y: 11.0
+  r: 1.6
+- kind: bush
+  x: 14.0
+  y: 2.0
+  r: 0.6
+actor_waypoints: null
+safety_rule: landing is safe if slope < 10 deg and the nearest hazard edge is >= 0.5
+  m away

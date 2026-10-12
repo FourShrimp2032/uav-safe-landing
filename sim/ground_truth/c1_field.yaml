@@ -1,0 +1,61 @@
+world: c1_field
+title: 'C1 ideal: flat field with bushes and rocks'
+mission_xy:
+- 8.0
+- 4.0
+spawn_xy:
+- 0.0
+- 0.0
+hill: null
+objects:
+- kind: rock
+  x: 8.0
+  y: 4.0
+  size: 0.3
+- kind: rock
+  x: 8.6
+  y: 3.5
+  size: 0.25
+- kind: rock
+  x: 7.4
+  y: 4.6
+  size: 0.22
+- kind: rock
+  x: 8.3
+  y: 5.0
+  size: 0.2
+- kind: bush
+  x: 5.0
+  y: 6.5
+  r: 0.8
+- kind: bush
+  x: 11.5
+  y: 2.0
+  r: 0.7
+- kind: bush
+  x: 10.5
+  y: 7.5
+  r: 0.9
+- kind: bush
+  x: 4.0
+  y: 1.0
+  r: 0.6
+- kind: bush
+  x: 13.0
+  y: 5.5
+  r: 0.6
+- kind: rock
+  x: 6.0
+  y: 2.5
+  size: 0.25
+- kind: rock
+  x: 10.0
+  y: 4.8
+  size: 0.2
+- kind: rock
+  x: 2.5
+  y: 6.0
+  size: 0.3
+actor_waypoints: null
+safety_rule: landing is safe if slope < 10 deg and the nearest hazard edge is >= 0.5
+  m away

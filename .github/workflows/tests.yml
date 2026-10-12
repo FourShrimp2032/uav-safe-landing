@@ -1,0 +1,17 @@
+name: tests
+on:
+  push:
+  pull_request:
+jobs:
+  algorithms:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install numpy opencv-python-headless pillow pyyaml pytest
+      - name: Worlds are up to date with tools/make_worlds.py
+        run: python3 tools/make_worlds.py && git diff --exit-code -- sim/worlds sim/ground_truth ros2_ws/src/safe_landing/config
+      - name: Unit tests (look, feel, motion, geometry)
+        run: python3 -m pytest -q ros2_ws/src/safe_landing/test

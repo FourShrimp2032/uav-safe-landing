@@ -1,0 +1,29 @@
+world: c2_hill
+title: 'C2 hard: grassy hill, the camera can''t see the slope'
+mission_xy:
+- 7.0
+- 0.0
+spawn_xy:
+- 0.0
+- 0.0
+hill:
+  x: 14.0
+  y: 0.0
+  height: 3.0
+  radius: 10.0
+objects:
+- kind: bush
+  x: 1.5
+  y: 5.0
+  r: 0.7
+- kind: rock
+  x: 2.0
+  y: -3.0
+  size: 0.25
+- kind: rock
+  x: -1.0
+  y: 4.0
+  size: 0.25
+actor_waypoints: null
+safety_rule: landing is safe if slope < 10 deg and the nearest hazard edge is >= 0.5
+  m away
