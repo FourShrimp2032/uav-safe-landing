@@ -15,6 +15,7 @@ moving objects. Run it inside the container (it needs ROS 2 to read the bag).
 import glob
 import json
 import os
+import subprocess
 import sys
 
 import cv2
@@ -28,12 +29,28 @@ DECISION_STATES = {"LOOK", "CONFIRM"}
 
 
 def find_bag(arg: str) -> str:
-    if os.path.isdir(arg) and os.path.exists(os.path.join(arg, "metadata.yaml")):
+    if os.path.isdir(arg):
         return arg
-    bags = sorted(glob.glob(os.path.join(LOG_ROOT, arg, "bag_*")))
+    bags = sorted(b for b in glob.glob(os.path.join(LOG_ROOT, arg, "bag_*")) if os.path.isdir(b))
     if not bags:
         sys.exit(f"no bags in {os.path.join(LOG_ROOT, arg)}")
     return bags[-1]
+
+
+def repair(bag: str) -> None:
+    """A recording that was killed (Ctrl+C on a batch, a crash) has no
+    metadata.yaml, so ROS can't open it. `ros2 bag reindex` rebuilds it."""
+    if os.path.exists(os.path.join(bag, "metadata.yaml")):
+        return
+    files = glob.glob(os.path.join(bag, "*.mcap")) + glob.glob(os.path.join(bag, "*.db3"))
+    if not files:
+        sys.exit(f"{bag} has no recording in it")
+    storage = "mcap" if files[0].endswith(".mcap") else "sqlite3"
+    print(f"{bag} wasn't closed properly, rebuilding its index...")
+    subprocess.run(["ros2", "bag", "reindex", bag, "-s", storage], check=False)
+    if not os.path.exists(os.path.join(bag, "metadata.yaml")):
+        sys.exit("couldn't repair it; try an older run: python3 tools/debug_video.py "
+                 + os.path.join(os.path.dirname(bag), "bag_<time>"))
 
 
 def to_bgr(msg) -> np.ndarray:
@@ -46,6 +63,7 @@ def main() -> None:
     if len(sys.argv) != 2:
         sys.exit(__doc__)
     bag = find_bag(sys.argv[1]).rstrip("/")
+    repair(bag)
     reader = rosbag2_py.SequentialReader()
     reader.open(rosbag2_py.StorageOptions(uri=bag),
                 rosbag2_py.ConverterOptions("cdr", "cdr"))
