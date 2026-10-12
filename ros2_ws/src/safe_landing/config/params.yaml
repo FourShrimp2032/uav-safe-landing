@@ -4,9 +4,10 @@ safe_landing:
   ros__parameters:
     auto_takeoff: true            # sim: the node arms and takes off. Real drone: false, pilot hands over in OFFBOARD
     use_mission_point: true       # false = land near wherever the drone is when it starts
-    look_altitude_m: 15.0
+    look_altitude_m: 10.0         # wide camera: ~25 x 14 m of ground at ~1.9 cm/px
     feel_start_agl_m: 5.0         # rangefinder check starts here
     final_agl_m: 1.5              # below this, land if the check passed
+    land_commit_agl_m: 0.7        # until this low, someone walking in still aborts the landing
     descent_speed_fast: 1.0       # m/s above feel_start
     descent_speed_slow: 0.4       # m/s during the check
     yaw_rate_deg_s: 45.0          # turning while descending draws the spiral
@@ -25,9 +26,9 @@ safe_landing:
     look_edge_threshold: 6.0
     look_bad_cell_fraction: 0.10
     # Camera (must match sim/models/x500_landing/model.sdf, or your real camera)
-    camera_width: 960
-    camera_height: 540
-    camera_hfov_deg: 66.0
+    camera_width: 1280
+    camera_height: 720
+    camera_hfov_deg: 102.0        # Pi Camera Module 3 Wide
     camera_offset: [0.05, 0.0, -0.06]
     camera_timeout_s: 5.0         # no frame for this long = camera failed (slow sims lag)
     # Rangefinders (body frame FLU, metres)

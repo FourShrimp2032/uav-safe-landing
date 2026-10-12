@@ -77,9 +77,10 @@ class SafeLandingNode(Node):
         # Where the local frame's origin is in the Gazebo world (sim only),
         # so results can be checked against the world's ground truth.
         self.origin_world = np.array([d("spawn_x", 0.0).value, d("spawn_y", 0.0).value])
-        self.look_alt = d("look_altitude_m", 15.0).value
+        self.look_alt = d("look_altitude_m", 10.0).value
         self.feel_start_agl = d("feel_start_agl_m", 5.0).value
         self.final_agl = d("final_agl_m", 1.5).value
+        self.land_commit_agl = d("land_commit_agl_m", 0.7).value
         self.v_fast = d("descent_speed_fast", 1.0).value
         self.v_slow = d("descent_speed_slow", 0.4).value
         self.yaw_rate = math.radians(d("yaw_rate_deg_s", 45.0).value)
@@ -91,9 +92,9 @@ class SafeLandingNode(Node):
         self.slope_block_radius = d("slope_block_radius_m", 4.0).value
         self.log_dir = os.path.expanduser(d("log_dir", "~/landing_logs").value)
         # camera
-        w = d("camera_width", 960).value
-        h = d("camera_height", 540).value
-        hfov = math.radians(d("camera_hfov_deg", 66.0).value)
+        w = d("camera_width", 1280).value
+        h = d("camera_height", 720).value
+        hfov = math.radians(d("camera_hfov_deg", 102.0).value)
         self.cam = Camera(*intrinsics_from_fov(w, h, hfov),
                           offset_body=d("camera_offset", [0.05, 0.0, -0.06]).value)
         self.camera_timeout = d("camera_timeout_s", 5.0).value
@@ -141,6 +142,7 @@ class SafeLandingNode(Node):
         self.state = S.WAIT_FCU
         self.state_t = self.now()
         self.offboard_seen = False
+        self.offboard_grace_until = -1e9   # switching back to OFFBOARD after an aborted landing
         self.last_req = -1e9
         self.queue: list[np.ndarray] = []
         self.target = None
@@ -292,10 +294,12 @@ class SafeLandingNode(Node):
         # Watch for moving objects whenever we're airborne and high enough
         # for the picture to mean something.
         agl = self.agl()
-        if self.state in OFFBOARD_STATES and agl > self.final_agl:
+        watching = ((self.state in OFFBOARD_STATES and agl > self.final_agl)
+                    or (self.state == S.LAND and agl > self.land_commit_agl))
+        if watching:
             gsd = self.cam.gsd(agl)
             R_wb, t_wb = self.img_pose
-            descending = self.state == S.DESCEND
+            descending = self.state in (S.DESCEND, S.LAND)
             epipole = (self.cam.ground_to_pixel(t_wb[0], t_wb[1], self.ground_z, R_wb, t_wb)
                        if descending else None)
             blobs = self.motion.update(self.img, gsd, epipole, agl)
@@ -339,7 +343,8 @@ class SafeLandingNode(Node):
         self.tick += 1
         if self.t_wb is not None and self.sp is None:
             self.sp = [*self.t_wb, self.yaw()]
-        if self.offboard_seen and self.state in OFFBOARD_STATES and self.fcu.mode != "OFFBOARD":
+        if (self.offboard_seen and self.state in OFFBOARD_STATES and self.fcu.mode != "OFFBOARD"
+                and self.now() > self.offboard_grace_until):
             self.goto(S.DONE, f"pilot took over (mode {self.fcu.mode})")
             self.finish("pilot_override")
         handler = getattr(self, f"st_{self.state.value.lower()}")
@@ -351,7 +356,9 @@ class SafeLandingNode(Node):
             self.log_row()
 
     def publish_setpoint(self) -> None:
-        if self.sp is None or self.state in (S.LAND, S.RTL, S.DONE):
+        # Keep streaming during LAND too, so PX4 accepts OFFBOARD at once if
+        # the landing has to be aborted.
+        if self.sp is None or self.state in (S.RTL, S.DONE):
             return
         msg = PoseStamped()
         msg.header.stamp = self.get_clock().now().to_msg()
@@ -546,6 +553,7 @@ class SafeLandingNode(Node):
         self.goto(S.GO_AROUND, f"FR-10: {why}")
 
     def st_go_around(self) -> None:
+        self.request_mode("OFFBOARD")   # no-op unless coming back from an aborted LAND
         self.sp = [self.t_wb[0], self.t_wb[1], self.ground_z + self.look_alt, self.sp[3]]
         if abs(self.t_wb[2] - self.sp[2]) < 0.7:
             if self.attempts >= self.max_attempts:
@@ -554,6 +562,14 @@ class SafeLandingNode(Node):
                 self.goto(S.LOOK, f"attempt {self.attempts + 1}")
 
     def st_land(self) -> None:
+        # Until the commit height, someone walking in still aborts the landing.
+        if self.agl() > self.land_commit_agl:
+            for (mx, my, mr) in self.recent_moving(0.0):
+                if math.hypot(mx - self.target[0], my - self.target[1]) < self.R + self.moving_buffer + mr:
+                    self.offboard_grace_until = self.now() + 3.0
+                    self.last_req = -1e9
+                    self.go_around(f"moving object at ({mx:.1f}, {my:.1f}) during landing")
+                    return
         self.request_mode("AUTO.LAND")
         if self.landed_state == LANDED_STATE_ON_GROUND and self.in_state() > 2.0:
             self.goto(S.DONE, "touchdown")
