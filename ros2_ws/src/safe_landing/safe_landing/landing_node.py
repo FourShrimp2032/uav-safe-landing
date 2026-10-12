@@ -98,6 +98,7 @@ class SafeLandingNode(Node):
         self.cam = Camera(*intrinsics_from_fov(w, h, hfov),
                           offset_body=d("camera_offset", [0.05, 0.0, -0.06]).value)
         self.camera_timeout = d("camera_timeout_s", 5.0).value
+        self.takeoff_timeout = d("takeoff_timeout_s", 180.0).value
         # rangefinders
         self.down_offset = np.array(d("range_down_offset", [-0.03, 0.0, -0.06]).value)
         self.tilt_offset = np.array(d("range_tilt_offset", [0.0, 0.0, -0.06]).value)
@@ -378,6 +379,13 @@ class SafeLandingNode(Node):
     def st_takeoff(self) -> None:
         # PX4 only accepts OFFBOARD after it has been receiving setpoints.
         self.sp = [self.sp[0], self.sp[1], self.home_z + self.look_alt, self.sp[3]]
+        # A starved simulator (PX4 "ekf2 missing data", time jumps) never
+        # lets the drone arm. Record that instead of hanging until the batch
+        # kills the run, so it shows up as a simulator problem, not a landing.
+        if time.time() - self.start_wall > self.takeoff_timeout and not self.fcu.armed:
+            self.goto(S.DONE, f"PX4 didn't arm within {self.takeoff_timeout:.0f} s")
+            self.finish("no_takeoff")
+            return
         if self.in_state() < 2.0:
             return
         if self.fcu.mode != "OFFBOARD":
