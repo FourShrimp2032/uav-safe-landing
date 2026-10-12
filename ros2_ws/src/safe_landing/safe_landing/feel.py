@@ -43,6 +43,7 @@ class FeelResult:
     bump_points: int
     max_residual_m: float
     ground_z: float          # plane height at the target
+    uphill: tuple            # (dz/dx, dz/dy) of the fitted plane: points uphill
     complete: bool           # enough points and coverage to decide
     safe: bool               # complete and nothing wrong
     unsafe: bool             # something is definitely wrong (abort now)
@@ -89,7 +90,8 @@ class GroundFeel:
         pts = self.points
         n = len(pts)
         if n < 3:
-            return FeelResult(n, 0, 0.0, 0, 0.0, float("nan"), False, False, False, "collecting")
+            return FeelResult(n, 0, 0.0, 0, 0.0, float("nan"), (0.0, 0.0), False, False, False,
+                              "collecting")
 
         dx, dy = pts[:, 0] - self.tx, pts[:, 1] - self.ty
         ring = np.hypot(dx, dy) >= p.inner_radius_m
@@ -111,4 +113,4 @@ class GroundFeel:
         elif not complete:
             reason = f"collecting ({n} pts, {sectors}/{p.sectors} sectors)"
         return FeelResult(n, sectors, slope, bumps, float(np.abs(res).max()), ground_z,
-                          complete, complete and not unsafe, unsafe, reason)
+                          (float(coef[0]), float(coef[1])), complete, complete and not unsafe, unsafe, reason)
