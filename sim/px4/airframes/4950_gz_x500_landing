@@ -1,0 +1,19 @@
+#!/bin/sh
+#
+# @name Gazebo x500 with the safe-landing module
+#
+# @type Quadrotor
+#
+# The stock x500 airframe, plus settings for flying with no RC transmitter
+# and no ground station (QGroundControl): the landing node is the only
+# thing talking to PX4. Without these, PX4 refuses to arm with
+# "Arming denied: Resolve system health failures first".
+#
+# Only for simulation. On the real drone keep RC and the failsafes on.
+
+. ${R}etc/init.d-posix/airframes/4001_gz_x500
+
+param set-default COM_RC_IN_MODE 4    # no stick input expected
+param set-default NAV_RCL_ACT 0       # no action on RC loss
+param set-default NAV_DLL_ACT 0       # no action on ground-station link loss
+param set-default COM_RCL_EXCEPT 4    # ignore RC loss in OFFBOARD
