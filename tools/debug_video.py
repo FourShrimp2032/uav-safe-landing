@@ -6,7 +6,8 @@
 
 Writes next to the bag (so it shows up in ./logs on your Mac):
   <bag>_look.mp4   every /landing/debug/look frame, with state and height on top
-  <bag>_look/      one PNG per LOOK / CONFIRM decision
+  <bag>_look/      one PNG per LOOK / CONFIRM decision, plus the last frame
+                   before every go-around (NN_abort.png, shows why it aborted)
 
 In the picture: red squares = ground the camera rejected, yellow circles =
 candidate spots (1 = best), cyan cross = chosen target, magenta circles =
@@ -75,6 +76,7 @@ def main() -> None:
     png_dir = bag + "_look"
     os.makedirs(png_dir, exist_ok=True)
     video, status, t0, n, n_png = None, {}, None, 0, 0
+    last_img, last_state = None, None
     while reader.has_next():
         topic, data, t_ns = reader.read_next()
         msg = deserialize_message(data, get_message(types[topic]))
@@ -97,6 +99,10 @@ def main() -> None:
         if state in DECISION_STATES:
             n_png += 1
             cv2.imwrite(os.path.join(png_dir, f"{n_png:02d}_{state.lower()}.png"), img)
+        if state == "GO_AROUND" and last_state != "GO_AROUND" and last_img is not None:
+            n_png += 1
+            cv2.imwrite(os.path.join(png_dir, f"{n_png:02d}_abort.png"), last_img)
+        last_img, last_state = img, state
     if video is None:
         sys.exit("no debug frames found")
     video.release()
