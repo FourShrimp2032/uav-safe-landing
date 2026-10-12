@@ -18,7 +18,7 @@ safe_landing:
     clearance_credit_m: 3.0       # prefer spots with up to this much open ground around them (keeps away from walls)
     max_slope_deg: 10.0           # FR-04
     bump_threshold_m: 0.12        # rocks / holes bigger than this abort the landing
-    feel_check_radius_m: 1.3
+    feel_check_radius_m: 1.3      # slope uses points out to here; bumps only count inside required_radius_m
     feel_min_points: 80
     moving_buffer_m: 1.5          # FR-05 buffer around the landing circle
     static_margin_m: 0.5          # "moving" things this close to a roof, tree or rock seen at confirm are parallax
