@@ -106,6 +106,7 @@ class SafeLandingNode(Node):
 
         self.look_params = LookParams(
             required_radius_m=d("required_radius_m", 1.0).value,
+            clearance_credit_m=d("clearance_credit_m", 3.0).value,
             edge_threshold=d("look_edge_threshold", 6.0).value,
             bad_cell_fraction=d("look_bad_cell_fraction", 0.10).value)
         self.feel_params = FeelParams(
