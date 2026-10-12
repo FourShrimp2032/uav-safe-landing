@@ -82,6 +82,7 @@ ros2_ws/src/safe_landing/
   config/params.yaml            every tunable number
   launch/sim.launch.py          bridge + MAVROS + node + rosbag
 sim/models/x500_landing/        PX4 x500 + camera + 2 rangefinders
+sim/px4/airframes/              PX4 airframe: x500 that arms without RC or QGroundControl
 sim/worlds/                     C1-C4 (generated, don't edit by hand)
 tools/make_worlds.py            generates worlds, textures, ground truth
 tools/summarize.py              KPI report

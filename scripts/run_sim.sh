@@ -23,6 +23,11 @@ GZ_DIR="$PX4_DIR/Tools/simulation/gz"
 ln -sfn "$REPO/sim/models/x500_landing" "$GZ_DIR/models/x500_landing"
 ln -sfn "$REPO/sim/models/sl_assets" "$GZ_DIR/models/sl_assets"
 for w in "$REPO"/sim/worlds/*.sdf; do ln -sfn "$w" "$GZ_DIR/worlds/$(basename "$w")"; done
+# Our airframe (x500 + no RC / no ground station needed to arm).
+for d in "$PX4_DIR/ROMFS/px4fmu_common/init.d-posix/airframes" \
+         "$PX4_DIR/build/px4_sitl_default/etc/init.d-posix/airframes"; do
+  if [ -d "$d" ]; then ln -sfn "$REPO/sim/px4/airframes/4950_gz_x500_landing" "$d/"; fi
+done
 
 SPAWN=$(python3 - "$REPO" "$WORLD" "$DX" "$DY" <<'PY'
 import sys, yaml
@@ -43,7 +48,7 @@ cleanup
 if [ "${HEADLESS:-0}" = "1" ]; then export HEADLESS=1; else unset HEADLESS; fi
 mkdir -p /tmp/px4
 echo "Starting PX4 + Gazebo ($WORLD, spawn $SPAWN)..."
-(cd "$PX4_DIR" && PX4_SYS_AUTOSTART=4001 PX4_SIM_MODEL=gz_x500_landing PX4_GZ_WORLD="$WORLD" \
+(cd "$PX4_DIR" && PX4_SYS_AUTOSTART=4950 PX4_SIM_MODEL=gz_x500_landing PX4_GZ_WORLD="$WORLD" \
    PX4_GZ_MODEL_POSE="$SPAWN" ./build/px4_sitl_default/bin/px4 -d > /tmp/px4/px4.log 2>&1) &
 
 for i in $(seq 1 180); do
