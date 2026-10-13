@@ -12,5 +12,8 @@ services:
       - .:/workspace/uav-safe-landing
       - ./logs:/root/landing_logs
     shm_size: "2gb"
+    # A tiny init process as PID 1 that cleans up finished processes, so
+    # stopped simulator runs don't stay behind as <defunct> zombies.
+    init: true
     tty: true
     stdin_open: true
