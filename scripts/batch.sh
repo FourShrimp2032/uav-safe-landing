@@ -20,7 +20,13 @@ for i in $(seq 1 "$N"); do
   WAIT=$(python3 -c "import random; print(random.randint(0, 40))")
   before=$(ls "$LOGS"/*_result.json 2>/dev/null | wc -l)
   echo "=== run $i/$N (spawn offset $DX, $DY, start after $WAIT s) ==="
-  HEADLESS=1 SPAWN_DX=$DX SPAWN_DY=$DY START_DELAY=$WAIT "$REPO/scripts/run_sim.sh" "$WORLD" > "/tmp/run_${WORLD}_$i.log" 2>&1 &
+  # setsid: the run gets its own process group, so stopping it below reaches
+  # every process it started (PX4, Gazebo, MAVROS, bridge, node, recorder).
+  # env --default-signal: bash makes background jobs ignore Ctrl+C (SIGINT)
+  # and children inherit that, so without it ROS nodes can't be shut down
+  # politely and get left behind, piling up run after run.
+  HEADLESS=1 SPAWN_DX=$DX SPAWN_DY=$DY START_DELAY=$WAIT setsid env --default-signal=INT,QUIT \
+    "$REPO/scripts/run_sim.sh" "$WORLD" > "/tmp/run_${WORLD}_$i.log" 2>&1 &
   pid=$!
   for s in $(seq 1 "$TIMEOUT"); do
     now=$(ls "$LOGS"/*_result.json 2>/dev/null | wc -l)
@@ -28,25 +34,13 @@ for i in $(seq 1 "$N"); do
     sleep 1
   done
   [ "$now" -gt "$before" ] || echo "run $i timed out (log: /tmp/run_${WORLD}_$i.log)"
-  # Close the recording first, gently, so the bag gets finished and indexed
-  # (killed hard it ends up empty and debug_video.py can't read it). TERM,
-  # not INT: the run was started in the background with &, and bash makes
-  # background jobs ignore Ctrl+C, so INT never reached the recorder and old
-  # recorders piled up, eating the CPU.
-  pkill -TERM -f "ros2 bag record" 2>/dev/null
-  for s in $(seq 1 15); do pgrep -f "ros2 bag record" > /dev/null || break; sleep 1; done
-  # Stop this run. Killing only run_sim.sh isn't enough: bash runs its exit
-  # trap after the ros2 launch in the foreground returns, which it never does.
-  pkill -f "ros2 launch safe_landing" 2>/dev/null
-  pkill -x px4 2>/dev/null
-  pkill -f "gz sim" 2>/dev/null
-  kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
+  # Stop the whole run: TERM first so the recording gets closed properly,
+  # then KILL whatever is still there.
+  kill -TERM -- -"$pid" 2>/dev/null
+  for s in $(seq 1 15); do kill -0 -- -"$pid" 2>/dev/null || break; sleep 1; done
+  kill -KILL -- -"$pid" 2>/dev/null
+  wait "$pid" 2>/dev/null
+  "$REPO/scripts/kill_sim.sh"
   sleep 3
-  # Anything that ignored the polite kill would share the simulator with the
-  # next run, so force it.
-  pkill -9 -f "ros2 launch safe_landing" 2>/dev/null
-  pkill -9 -x px4 2>/dev/null
-  pkill -9 -f "gz sim" 2>/dev/null
-  pkill -9 -f "ros2 bag record" 2>/dev/null
 done
 python3 "$REPO/tools/summarize.py" "$WORLD"
