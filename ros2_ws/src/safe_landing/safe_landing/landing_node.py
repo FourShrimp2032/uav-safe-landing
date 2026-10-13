@@ -314,7 +314,8 @@ class SafeLandingNode(Node):
             self.moving_world = world
             if world:
                 self.moving_t = self.now()
-            if self.state == S.DESCEND:
+            if descending:
+                # LAND too: the last metre is where a walk-in has to be caught.
                 self.publish_debug(None, blobs)
         else:
             self.motion.reset()
