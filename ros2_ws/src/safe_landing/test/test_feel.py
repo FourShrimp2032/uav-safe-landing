@@ -122,3 +122,28 @@ def test_bush_reaching_under_the_drone_is_rejected():
     world = {"hill": None, "objects": [{"kind": "bush", "x": 0.5 + 0.9, "y": 0.0, "r": 0.9}]}
     res = fly_spiral(world, (0.0, 0.0))
     assert res.unsafe and res.reason.startswith("bump"), res.reason
+
+
+def _flat_points(feel, z, n=400, seed=1):
+    rng = np.random.default_rng(seed)
+    for _ in range(n):
+        r, a = 1.25 * math.sqrt(rng.random()), rng.random() * 2 * math.pi
+        feel.add_point(r * math.cos(a), r * math.sin(a), z + rng.normal(0, 0.01))
+    return feel.evaluate()
+
+
+def test_blind_roof_is_rejected():
+    # No camera: a flat roof 5 m up feels like flat ground, but its height gives it away.
+    res = _flat_points(GroundFeel((0.0, 0.0), FeelParams(takeoff_ground_z=0.0)), z=5.0)
+    assert res.unsafe and "roof" in res.reason, res.reason
+
+
+def test_blind_ground_at_takeoff_height_is_safe():
+    res = _flat_points(GroundFeel((0.0, 0.0), FeelParams(takeoff_ground_z=0.0)), z=0.2)
+    assert res.complete and res.safe, res.reason
+
+
+def test_height_is_not_checked_when_the_camera_works():
+    # With the camera the look already rejects roofs; a flat hilltop may be fine.
+    res = _flat_points(GroundFeel((0.0, 0.0), FeelParams()), z=5.0)
+    assert res.complete and res.safe, res.reason
