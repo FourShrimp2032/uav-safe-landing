@@ -14,6 +14,10 @@ z = a*x + b*y + c:
 The fit is repeated without the worst points, so one big rock doesn't tilt
 the plane and hide itself.
 
+Without the camera (degraded mode) a flat roof feels just like flat ground.
+Then `takeoff_ground_z` is set, and a surface well above the ground the drone
+took off from is rejected as a probable roof.
+
 Bumps only count inside `bump_radius_m`, the landing circle the camera
 promised to be clear. The ring beyond it helps the slope fit, but a bush or
 rock out there is not under the drone and must not abort the landing.
@@ -38,6 +42,8 @@ class FeelParams:
     bump_threshold_m: float = 0.12
     min_bump_points: int = 3         # a single noisy reading is not a rock
     early_slope_points: int = 40     # judge slope early once this many points are in
+    takeoff_ground_z: float | None = None  # set when flying blind (no camera)
+    max_height_m: float = 1.0        # blind: higher than this above takeoff ground = roof
 
 
 @dataclass
@@ -120,6 +126,10 @@ class GroundFeel:
             unsafe, reason = True, f"slope {slope:.1f} deg > {p.max_slope_deg:.0f}"
         elif ready and bumps >= p.min_bump_points:
             unsafe, reason = True, f"bump: {bumps} points off the ground by >{p.bump_threshold_m:.2f} m"
+        elif (ready and p.takeoff_ground_z is not None
+              and ground_z - p.takeoff_ground_z > p.max_height_m):
+            unsafe, reason = True, (f"surface {ground_z - p.takeoff_ground_z:.1f} m above the "
+                                    "takeoff ground (roof?) and no camera to check")
         elif not complete:
             reason = f"collecting ({n} pts, {sectors}/{p.sectors} sectors)"
         max_res = float(np.abs(res[inside]).max()) if inside.any() else 0.0

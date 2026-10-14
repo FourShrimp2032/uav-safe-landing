@@ -20,6 +20,7 @@ set_mode for AUTO.LAND / AUTO.RTL. Every decision is logged to CSV at
 from __future__ import annotations
 
 import csv
+import dataclasses
 import json
 import math
 import os
@@ -505,7 +506,12 @@ class SafeLandingNode(Node):
     def start_descent(self, why: str, static_bad=None) -> None:
         self.static_bad = static_bad if static_bad is not None else np.zeros((0, 2))
         self.motion.reset()
-        self.feel = GroundFeel(self.target, self.feel_params)
+        params = self.feel_params
+        if not self.camera_ok() and self.home_z is not None:
+            # Blind: the rangefinders can't tell a flat roof from the ground,
+            # but its height above where we took off gives it away.
+            params = dataclasses.replace(params, takeoff_ground_z=self.home_z)
+        self.feel = GroundFeel(self.target, params)
         self.feel_result = None
         self.hold_t = None
         self.goto(S.DESCEND, why)
