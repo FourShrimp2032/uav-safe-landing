@@ -48,3 +48,20 @@ def test_field_lands_first_try():
     landed, attempts = run_attempts(world)
     assert landed is not None and attempts == 0
     assert distance_to_hazards(world, *landed) >= 0.5
+
+
+def test_shadows_water_lands_on_grass_first_try():
+    world = WORLDS["c5_shadows_water"]
+    landed, attempts = run_attempts(world)
+    assert landed is not None and attempts == 0
+    assert distance_to_hazards(world, *landed) >= 0.5
+
+
+def test_blue_water_is_rejected_by_colour():
+    world = WORLDS["c5_shadows_water"]
+    pond = next(o for o in world["objects"] if o["kind"] == "pond" and o["color"] == "blue")
+    img = render_topdown(world, (pond["x"], pond["y"]), gsd_m=GSD)
+    res = find_spots(img, GSD)
+    rows, cols = res.cell_bad.shape
+    centre = res.cell_bad[rows // 2 - 3:rows // 2 + 3, cols // 2 - 3:cols // 2 + 3]
+    assert centre.all()

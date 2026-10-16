@@ -47,7 +47,7 @@ Gazebo and ROS 2 don't run natively on macOS, so everything runs in Docker and y
 
 Gazebo renders on the CPU inside Docker, so it runs slower than real time. That's expected, and the landing logic runs on simulation time, so the results are the same.
 
-**Worlds:** `c1_field` (bushes and rocks), `c2_hill` (a slope the camera can't see), `c3_town` (houses, trees and a road), `c4_dynamic` (a person walks into the landing zone). `c4_dynamic` downloads the person model from Gazebo Fuel the first time, so it needs internet.
+**Worlds:** `c1_field` (bushes and rocks), `c2_hill` (a slope the camera can't see), `c3_town` (houses, trees and a road), `c4_dynamic` (a person walks into the landing zone), `c5_shadows_water` (a stress test: low evening sun with long tree shadows, a blue pond and a green, algae-covered one). `c4_dynamic` downloads the person model from Gazebo Fuel the first time, so it needs internet.
 
 ### Watching what the algorithm sees
 In a second shell (`docker compose exec sim bash`):
