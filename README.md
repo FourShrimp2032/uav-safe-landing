@@ -115,6 +115,8 @@ GitHub Actions runs them on every push.
 - **Sun glare:** a reflection of the sun (on water, a wet roof, a car) slides across the picture as the drone moves, so the moving-object check can take it for something moving. The simulated sun has no specular light for this reason; test over shiny surfaces outdoors.
 - **Thin obstacles** such as power lines and thin branches aren't seen reliably by either sensor.
 - **Sparse coverage:** a small rock between two loops of the spiral can be missed. Descending slower or turning faster makes the spiral denser.
+- **Green water:** a pond covered in algae is grass-coloured and smooth, so the camera takes it for a lawn, and to the rangefinders it is flat ground. Clear blue water is rejected by the colour check. `c5_shadows_water` contains both. A learned water detector (plan B) is the planned fix.
+- **Deep shadows:** if shadows are dark enough, shadowed grass fails the brightness check and the drone lands in the sun further from the mission point. That is safe, but it is not where it was sent.
 - **Real sunlight** shortens the TF-Luna's range on dark grass. The check starts at 5 m, so test outdoors early.
 
 ## Moving to the real drone
