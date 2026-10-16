@@ -19,3 +19,8 @@ c4_dynamic:
   mission_y: 0.0
   spawn_x: 0.0
   spawn_y: 0.0
+c5_shadows_water:
+  mission_x: 8.0
+  mission_y: 10.0
+  spawn_x: 0.0
+  spawn_y: -8.0
