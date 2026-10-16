@@ -119,8 +119,7 @@ GitHub Actions runs them on every push.
 
 ## Moving to the real drone
 
-- Wire the downward TF-Luna to the flight controller, so PX4 uses it for landing even if the Pi crashes. The Pi reads it back through MAVROS (`/mavros/distance_sensor/...`). Wire the tilted one to the Pi (UART or I2C). A small driver node then publishes both as `sensor_msgs/LaserScan` on `/landing/range_down/scan` and `/landing/range_tilt/scan`.
-- Use `camera_ros` (libcamera) for the Pi camera. Calibrate it, and put the real FOV and resolution in `params.yaml` *and* in `model.sdf`, so the simulation sees what the real camera sees. The wide lens bends straight lines near the edges, so undistort each frame with the calibration (`cv2.undistort`) before the node uses it; the simulated camera has no distortion.
-- Set `auto_takeoff: false`. The pilot flies to the area and switches to OFFBOARD to hand over, and switching out of OFFBOARD at any time takes control back immediately.
-- MAVROS `fcu_url` becomes the serial port, for example `/dev/ttyAMA0:921600`.
+`ros2 launch safe_landing real.launch.py` runs the same landing node on the Raspberry Pi. Two small nodes take Gazebo's place: `camera_prep` undistorts the Pi camera onto the ideal camera the node expects, and `range_driver` reads the TF-Luna rangefinders (the downward one through PX4, so PX4 can still land if the Pi stops). Wiring, PX4 parameters, camera calibration and the bench test are in [docs/real_drone.md](docs/real_drone.md).
+
+- The pilot flies to the area and switches to OFFBOARD to hand over. Switching out of OFFBOARD at any time takes control back immediately.
 - Order: bench test, then hover and scan without landing (record bags), then land on a prepared pad, then rough ground. Always with a pilot ready to take over.
