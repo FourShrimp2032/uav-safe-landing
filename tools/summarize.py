@@ -6,6 +6,7 @@
 Reads <logs_dir>/<world>/*_result.json (default logs dir: /root/landing_logs
 in the container, ./logs on your Mac).
 """
+import csv
 import json
 import math
 import statistics
@@ -18,11 +19,12 @@ from make_worlds import WORLDS, actor_xy, distance_to_hazards, terrain_slope_deg
 MAX_SLOPE = 10.0
 MIN_CLEARANCE = 0.5
 PERSON_CLEARANCE = 1.5   # landing circle (1 m) + half a person
-PERSON_WINDOW = (-4.0, 1.0)  # seconds around touchdown that count
+PERSON_WINDOW = 4.0      # seconds before ground contact that count
+CONTACT_AGL = 0.15       # height (m) that counts as ground contact
 MAX_ERROR = 0.30
 
 
-def judge(world, r):
+def judge(world, r, contact_t=None):
     """Success = landed on ground that is really safe. Every test world has
     safe ground near the mission point, so an RTL counts as a failure."""
     if r["outcome"] != "landed" or not r.get("landed_world_xy"):
@@ -34,21 +36,37 @@ def judge(world, r):
         return False, f"landed on {slope:.0f} deg slope"
     if clear < MIN_CLEARANCE:
         return False, f"landed {clear:.2f} m from a hazard"
-    person = closest_person(world, r, x, y)
+    person = closest_person(world, r, x, y, contact_t)
     if person is not None and person < PERSON_CLEARANCE:
         return False, f"person {person:.1f} m away at touchdown"
     return True, "safe landing"
 
 
-def closest_person(world, r, x, y):
-    """Closest the walking person came to the landing point around touchdown."""
+def contact_time(result_path: Path):
+    """When the drone first reached the ground, from the height log. The
+    "touchdown" event comes 1-2 s later (PX4's land detector takes a while)."""
+    log = result_path.with_name(result_path.name.replace("_result.json", "_log.csv"))
+    if not log.exists():
+        return None
+    with open(log, newline="") as f:
+        for row in csv.DictReader(f):
+            if row["state"] == "LAND" and float(row["agl"]) <= CONTACT_AGL:
+                return float(row["t"])
+    return None
+
+
+def closest_person(world, r, x, y, contact_t=None):
+    """Closest the walking person came to the landing point in the last
+    seconds before ground contact. Someone walking up to a drone that is
+    already on the ground is not a landing failure."""
     if not world.get("actor"):
         return None
-    t_td = next((e["t"] for e in r.get("events", []) if e["why"] == "touchdown"), None)
+    t_td = contact_t
+    if t_td is None:
+        t_td = next((e["t"] for e in r.get("events", []) if e["why"] == "touchdown"), None)
     if t_td is None:
         return None
-    ts = [t_td + PERSON_WINDOW[0] + 0.1 * i
-          for i in range(int(10 * (PERSON_WINDOW[1] - PERSON_WINDOW[0])) + 1)]
+    ts = [t_td - PERSON_WINDOW + 0.1 * i for i in range(int(10 * PERSON_WINDOW) + 1)]
     return min(math.hypot(px - x, py - y) for px, py in (actor_xy(world, t) for t in ts))
 
 
@@ -71,7 +89,7 @@ def main():
             skipped += 1
             print(f"{f.stem[:34]:<34} {r['outcome']:<16} {'-':>5} {'-':>6}  simulator problem, not counted")
             continue
-        good, why = judge(world, r)
+        good, why = judge(world, r, contact_time(f))
         ok += good
         if r.get("landing_error_m") is not None:
             errors.append(r["landing_error_m"])
