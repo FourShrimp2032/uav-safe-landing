@@ -15,6 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from make_worlds import WORLDS, actor_xy, distance_to_hazards, terrain_slope_deg  # noqa: E402
+from make_worlds import object_footprint  # noqa: E402
 
 MAX_SLOPE = 10.0
 MIN_CLEARANCE = 0.5
@@ -35,11 +36,21 @@ def judge(world, r, contact_t=None):
     if slope >= MAX_SLOPE:
         return False, f"landed on {slope:.0f} deg slope"
     if clear < MIN_CLEARANCE:
-        return False, f"landed {clear:.2f} m from a hazard"
+        return False, f"landed at ({x:.1f}, {y:.1f}), {clear:.2f} m from {nearest_hazard(world, x, y)}"
     person = closest_person(world, r, x, y, contact_t)
     if person is not None and person < PERSON_CLEARANCE:
         return False, f"person {person:.1f} m away at touchdown"
     return True, "safe landing"
+
+
+def nearest_hazard(world, x, y):
+    """Name of the hazard that is closest to (x, y), e.g. "pond (murky) at (5.0, 1.0)"."""
+    def gap(o):
+        return distance_to_hazards({"objects": [o]}, x, y)
+    o = min(world["objects"], key=gap)
+    kind = o["kind"] + (f" ({o['color']})" if "color" in o else "")
+    shape, _ = object_footprint(o)
+    return f"{kind} at ({o['x']:.1f}, {o['y']:.1f})" + (" edge" if shape == "rect" else "")
 
 
 def contact_time(result_path: Path):
