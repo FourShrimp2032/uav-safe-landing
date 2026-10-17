@@ -24,6 +24,8 @@ setup(
     entry_points={
         "console_scripts": [
             "landing_node = safe_landing.landing_node:main",
+            "range_driver = safe_landing.range_driver:main",
+            "camera_prep = safe_landing.camera_prep:main",
         ],
     },
 )

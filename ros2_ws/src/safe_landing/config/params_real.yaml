@@ -1,0 +1,35 @@
+# Real drone: loaded after params.yaml, only what differs from the simulation.
+/**:
+  ros__parameters:
+    # Shared by camera_prep and safe_landing, so both use the same ideal camera.
+    # Pick camera_hfov_deg at or below the "widest usable HFOV" camera_prep
+    # prints after calibration (the Pi Camera Module 3 Wide is ~102 deg before
+    # undistortion; the straightened image is a bit narrower).
+    camera_width: 1280
+    camera_height: 720
+    camera_hfov_deg: 95.0
+
+safe_landing:
+  ros__parameters:
+    auto_takeoff: false           # the pilot takes off, flies there and switches to OFFBOARD
+    use_mission_point: false      # land near where the pilot handed over
+    camera_timeout_s: 1.0         # real frames arrive steadily, a gap means a fault
+    # Measure these on the built drone (metres, body FLU: x forward, y left, z up)
+    camera_offset: [0.05, 0.0, -0.06]
+    range_down_offset: [-0.03, 0.0, -0.06]
+    range_tilt_offset: [0.0, 0.0, -0.06]
+    range_tilt_deg: 15.0
+
+camera_prep:
+  ros__parameters:
+    calibration_file: "~/landing_calib/ost.yaml"
+    camera_rotate_deg: 0          # 180 if the camera ends up mounted with its top to the tail
+    camera_rate_hz: 5.0
+
+range_driver:
+  ros__parameters:
+    tilt_port: "/dev/ttyAMA3"     # Pi 5 UART3 (GPIO 8/9), enable with dtoverlay=uart3-pi5
+    baud: 115200
+    rate_hz: 50.0
+    down_source: "mavros"         # downward TF-Luna is on the flight controller
+    down_topic: "/mavros/distance_sensor/rangefinder_pub"
