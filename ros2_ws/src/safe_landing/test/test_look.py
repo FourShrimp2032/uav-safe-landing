@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 from make_worlds import WORLDS, distance_to_hazards, render_topdown, terrain_slope_deg
@@ -66,3 +67,33 @@ def test_find_spots_is_fast_enough():
     for _ in range(5):
         find_spots(img, GSD, params=LookParams())
     assert (time.perf_counter() - t0) / 5 < 0.2   # NFR-01 budget on this machine
+
+
+def test_small_soil_patch_as_bright_as_grass_is_flagged():
+    # KPI-1: 20 x 20 cm at 10 m. Brown soil passes the colour rule and is
+    # about as bright as the grass, so only the colour edges give it away.
+    gsd = 0.0193
+    img = render_topdown({"objects": [], "hill": None}, (0, 0), gsd_m=gsd)
+    side = round(0.2 / gsd)
+    spots = [(150, 100), (400, 300), (700, 220), (820, 420)]
+    for u, v in spots:
+        img[v:v + side, u:u + side] = (48, 84, 120)   # BGR
+    res = find_spots(img, gsd)
+    for u, v in spots:
+        c = side // 2
+        r0, c0 = (v + c) // res.cell_px, (u + c) // res.cell_px
+        assert res.cell_bad[r0 - 1:r0 + 2, c0 - 1:c0 + 2].any(), (u, v)
+
+
+def test_green_pond_edge_is_flagged():
+    world = WORLDS["c5_shadows_water"]
+    pond = next(o for o in world["objects"] if o.get("color") == "murky")
+    img = render_topdown(world, (pond["x"], pond["y"]), gsd_m=GSD)
+    res = find_spots(img, GSD)
+    rad = int(pond["r"] / GSD)
+    ring = []
+    for a in np.linspace(0, 2 * np.pi, 16, endpoint=False):
+        u, v = 480 + rad * np.cos(a), 270 - rad * np.sin(a)
+        r, c = int(v // res.cell_px), int(u // res.cell_px)
+        ring.append(res.cell_bad[r - 1:r + 2, c - 1:c + 2].any())
+    assert sum(ring) >= 12

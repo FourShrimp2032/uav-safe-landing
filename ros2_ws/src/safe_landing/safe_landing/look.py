@@ -42,6 +42,9 @@ class LookParams:
     # pixels with a gradient stronger than this (grey levels per pixel).
     texture_sigma_m: float = 0.04
     edge_threshold: float = 6.0
+    # Colour edges: same blur, gradient of the Lab a/b (colour) channels.
+    # Catches objects as bright as the grass but a different colour.
+    colour_edge_threshold: float = 2.0
 
 
 @dataclass
@@ -80,6 +83,14 @@ def bad_pixel_mask(bgr: np.ndarray, gsd_m: float, p: LookParams) -> np.ndarray:
     gx = cv2.Sobel(blur, cv2.CV_32F, 1, 0, ksize=3) / 8.0
     gy = cv2.Sobel(blur, cv2.CV_32F, 0, 1, ksize=3) / 8.0
     busy = np.hypot(gx, gy) > p.edge_threshold
+
+    lab = cv2.cvtColor(bgr, cv2.COLOR_BGR2LAB).astype(np.float32)
+    g2 = np.zeros_like(gray)
+    for ch in (1, 2):
+        b = cv2.GaussianBlur(lab[..., ch], (0, 0), sigma_px)
+        g2 += (cv2.Sobel(b, cv2.CV_32F, 1, 0, ksize=3) / 8.0) ** 2
+        g2 += (cv2.Sobel(b, cv2.CV_32F, 0, 1, ksize=3) / 8.0) ** 2
+    busy |= np.sqrt(g2) > p.colour_edge_threshold
     return ~colour_ok | busy
 
 

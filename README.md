@@ -77,6 +77,17 @@ python3 tools/summarize.py c1_field
 ```
 The summary checks every landing spot against the world's ground truth (slope < 10°, ≥ 0.5 m from any hazard) and reports KPI-2, KPI-3 and KPI-4.
 
+KPI-1 (the camera sees 20 × 20 cm objects from 10 m) was measured offline: 128 frames rendered from 10 m with the 1280 × 720, 102° camera, 448 objects 5–15 cm tall on grass, fed to `find_spots`. An object counts as seen if a cell it covers is marked bad.
+
+| Object | Seen |
+|---|---|
+| grey stone | 100 % |
+| dark | 100 % |
+| brown, as bright as the grass | 100 % |
+| green, close to grass colour | 92 % |
+
+No cell was marked bad on bare grass. Before the colour-edge check was added, brown objects were seen 67 % of the time and green ones 72 %, because they pass the colour rule and are about as bright as the grass.
+
 ## Repository layout
 
 ```
@@ -115,7 +126,7 @@ GitHub Actions runs them on every push.
 - **Sun glare:** a reflection of the sun (on water, a wet roof, a car) slides across the picture as the drone moves, so the moving-object check can take it for something moving. The simulated sun has no specular light for this reason; test over shiny surfaces outdoors.
 - **Thin obstacles** such as power lines and thin branches aren't seen reliably by either sensor.
 - **Sparse coverage:** a small rock between two loops of the spiral can be missed. Descending slower or turning faster makes the spiral denser.
-- **Green water:** a pond covered in algae is grass-coloured and smooth, so the camera takes it for a lawn, and to the rangefinders it is flat ground. Clear blue water is rejected by the colour check. `c5_shadows_water` contains both. A learned water detector (plan B) is the planned fix.
+- **Green water:** a pond covered in algae is grass-coloured and smooth, and to the rangefinders it is flat ground. The colour-edge check marks its shore, but its middle still looks like a lawn, so a large green pond could still be chosen. Clear blue water is rejected by the colour check. `c5_shadows_water` contains both. A learned water detector (plan B) is the planned fix.
 - **Deep shadows:** if shadows are dark enough, shadowed grass fails the brightness check and the drone lands in the sun further from the mission point. That is safe, but it is not where it was sent.
 - **Real sunlight** shortens the TF-Luna's range on dark grass. The check starts at 5 m, so test outdoors early.
 
